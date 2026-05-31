@@ -1,0 +1,30 @@
+# Dependency directories
+node_modules/
+frontend/node_modules/
+backend/target/
+target/
+
+# Build outputs
+dist/
+frontend/dist/
+dist-ssr/
+*.class
+
+# Logs
+*.log
+logs/
+
+# Local env files
+.env
+.env.local
+.env.*.local
+
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store

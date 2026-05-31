@@ -1,0 +1,225 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { 
+  LayoutDashboard, FileText, ShieldAlert, Award, FileSpreadsheet, 
+  BarChart3, History, Bell, LogOut, Sun, Moon, ShieldCheck, User2, Menu, X 
+} from 'lucide-react';
+import api from '../services/api';
+
+const Layout = ({ children }) => {
+  const { user, logout, isAdmin, isCompliance, isTreasury, isOps, isClient } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem('theme') === 'dark' || 
+      (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  });
+  
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Apply Theme
+  useEffect(() => {
+    if (darkMode) {
+      document.body.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.body.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [darkMode]);
+
+  // Fetch Notifications
+  useEffect(() => {
+    if (user) {
+      const fetchAlerts = async () => {
+        try {
+          const res = await api.get(`/notifications/user/${user.username === 'client' ? 1 : 5}`);
+          setNotifications(res.data.data || []);
+          setUnreadCount(res.data.data?.filter(n => !n.isRead).length || 0);
+        } catch (e) {
+          console.error(e);
+        }
+      };
+      fetchAlerts();
+      const interval = setInterval(fetchAlerts, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  const markAllAsRead = async () => {
+    try {
+      const unread = notifications.filter(n => !n.isRead);
+      for (const n of unread) {
+        await api.put(`/notifications/${n.id}/read`);
+      }
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const menuItems = [
+    { name: 'Dashboard', icon: LayoutDashboard, path: '/', roles: ['CLIENT', 'OPERATIONS', 'RELATIONSHIP_MANAGER', 'TREASURY', 'COMPLIANCE', 'ADMIN'] },
+    { name: 'Letters of Credit', icon: FileText, path: '/lcs', roles: ['CLIENT', 'OPERATIONS', 'RELATIONSHIP_MANAGER', 'TREASURY', 'COMPLIANCE', 'ADMIN'] },
+    { name: 'Bank Guarantees', icon: Award, path: '/bgs', roles: ['CLIENT', 'OPERATIONS', 'RELATIONSHIP_MANAGER', 'TREASURY', 'COMPLIANCE', 'ADMIN'] },
+    { name: 'Export & Collections', icon: FileSpreadsheet, path: '/bills', roles: ['CLIENT', 'OPERATIONS', 'ADMIN'] },
+    { name: 'Compliance Registry', icon: ShieldAlert, path: '/compliance', roles: ['COMPLIANCE', 'ADMIN'] },
+    { name: 'Reports & Analytics', icon: BarChart3, path: '/reports', roles: ['CLIENT', 'TREASURY', 'OPERATIONS', 'ADMIN'] },
+    { name: 'Audit Ledger', icon: History, path: '/audit-logs', roles: ['ADMIN'] },
+  ];
+
+  const filteredMenuItems = menuItems.filter(item => item.roles.includes(user?.role));
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  return (
+    <div className="min-h-screen flex transition-colors duration-300 dark:bg-slate-950 bg-slate-50">
+      {/* Background Decorative Blur Gradients */}
+      <div className="glow-bg top-0 left-0 bg-brand-400 opacity-10 dark:opacity-20"></div>
+      <div className="glow-bg bottom-0 right-0 bg-blue-500 opacity-10 dark:opacity-10"></div>
+
+      {/* Sidebar navigation */}
+      <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-0'} transition-transform duration-300 lg:translate-x-0 border-r dark:border-slate-900 border-slate-200 dark:bg-slate-900/80 bg-white/80 backdrop-blur-md flex flex-col`}>
+        {/* Sidebar Header Title */}
+        <div className="h-16 flex items-center justify-between px-6 border-b dark:border-slate-900 border-slate-200">
+          <Link to="/" className="flex items-center gap-2">
+            <ShieldCheck className="h-8 w-8 text-brand-500 animate-pulse" />
+            <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-brand-600 to-brand-400 bg-clip-text text-transparent dark:from-white dark:to-brand-300">
+              TRADEVAULT
+            </span>
+          </Link>
+          <button className="lg:hidden" onClick={() => setSidebarOpen(false)}>
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* User Card inside Sidebar */}
+        <div className="p-4 border-b dark:border-slate-900 border-slate-200 bg-slate-50/50 dark:bg-slate-900/50">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-brand-500/10 flex items-center justify-center border border-brand-500/30">
+              <User2 className="h-5 w-5 text-brand-500" />
+            </div>
+            <div className="overflow-hidden">
+              <h4 className="font-semibold text-sm truncate">{user?.fullName}</h4>
+              <p className="text-xs dark:text-brand-400 text-brand-600 font-medium tracking-wide truncate">{user?.role}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Menu Items */}
+        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+          {filteredMenuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.name}
+                to={item.path}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  isActive 
+                    ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/25 dark:shadow-brand-500/10'
+                    : 'dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-white text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                {item.name}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Sidebar Footer: Theme Toggle & Logout */}
+        <div className="p-4 border-t dark:border-slate-900 border-slate-200 space-y-2">
+          <button 
+            onClick={() => setDarkMode(!darkMode)}
+            className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium dark:text-slate-400 text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              <span>{darkMode ? 'Light Theme' : 'Dark Theme'}</span>
+            </div>
+          </button>
+          
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-rose-500 hover:bg-rose-500/5 transition-colors"
+          >
+            <LogOut className="h-5 w-5" />
+            Logout
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        {/* Top Navbar */}
+        <header className="h-16 border-b dark:border-slate-900 border-slate-200 dark:bg-slate-950/80 bg-white/80 backdrop-blur-md flex items-center justify-between px-6 z-30">
+          <div className="flex items-center gap-4">
+            <button className="lg:hidden p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => setSidebarOpen(true)}>
+              <Menu className="h-6 w-6" />
+            </button>
+            <h2 className="hidden md:block font-bold text-lg tracking-wide text-slate-700 dark:text-slate-300">
+              Enterprise Operations Portal
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-4 relative">
+            {/* Notification drop-down */}
+            <button 
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="p-2 rounded-xl relative border dark:border-slate-900 border-slate-200 dark:hover:bg-slate-900 hover:bg-slate-100 transition-colors"
+            >
+              <Bell className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 h-5 w-5 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-bounce border-2 border-white dark:border-slate-950">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            {/* Notification Drawer Pop-over */}
+            {showNotifications && (
+              <div className="absolute right-0 top-12 w-80 rounded-2xl border dark:border-slate-800 border-slate-200 dark:bg-slate-900 bg-white shadow-2xl z-50 p-4 space-y-3">
+                <div className="flex items-center justify-between border-b dark:border-slate-850 pb-2">
+                  <h4 className="font-bold text-sm">Notifications &amp; Reminders</h4>
+                  <button onClick={markAllAsRead} className="text-xs text-brand-500 hover:underline">Mark read</button>
+                </div>
+                <div className="max-h-60 overflow-y-auto space-y-2">
+                  {notifications.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-4">No active notifications</p>
+                  ) : (
+                    notifications.map(n => (
+                      <div key={n.id} className={`p-2.5 rounded-xl text-xs border transition-colors ${n.isRead ? 'dark:bg-slate-950/40 bg-slate-50 dark:border-slate-900 border-slate-100' : 'dark:bg-brand-500/5 bg-brand-50/40 dark:border-brand-500/20 border-brand-100'}`}>
+                        <div className="flex items-center justify-between font-bold mb-1">
+                          <span>{n.title}</span>
+                          <span className={`h-1.5 w-1.5 rounded-full ${n.type === 'ALERT' ? 'bg-rose-500' : n.type === 'WARNING' ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
+                        </div>
+                        <p className="text-slate-500 dark:text-slate-400">{n.message}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </header>
+
+        {/* Nested Content Pages */}
+        <main className="flex-1 overflow-y-auto p-6 md:p-8 relative z-10">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default Layout;
