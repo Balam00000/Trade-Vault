@@ -15,6 +15,7 @@ import BillsCollections from './pages/BillsCollections';
 import ComplianceCases from './pages/ComplianceCases';
 import Reports from './pages/Reports';
 import AuditLedger from './pages/AuditLedger';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -33,6 +34,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Dashboard />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/profile" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Profile />
                 </Layout>
               </ProtectedRoute>
             } 

@@ -53,6 +53,48 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  /**
+   * Update the current user's username, email, and/or password.
+   * On success, syncs the updated profile back into localStorage & context state.
+   */
+  const updateProfile = async ({ newUsername, newEmail, currentPassword, newPassword }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await api.put('/auth/profile', {
+        newUsername: newUsername || null,
+        newEmail: newEmail || null,
+        currentPassword: currentPassword || null,
+        newPassword: newPassword || null,
+      });
+
+      const updatedProfile = response.data.data;
+
+      // Merge updated fields back into stored user and update the JWT token if returned
+      const mergedUser = {
+        ...user,
+        username: updatedProfile.username || user.username,
+        email: updatedProfile.email || user.email,
+        fullName: updatedProfile.fullName || user.fullName,
+      };
+
+      if (updatedProfile.token) {
+        mergedUser.token = updatedProfile.token;
+        localStorage.setItem('tradevault_token', updatedProfile.token);
+      }
+
+      setUser(mergedUser);
+      localStorage.setItem('tradevault_user', JSON.stringify(mergedUser));
+      setLoading(false);
+      return updatedProfile;
+    } catch (err) {
+      const errMsg = err.response?.data?.message || 'Profile update failed.';
+      setError(errMsg);
+      setLoading(false);
+      throw new Error(errMsg);
+    }
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('tradevault_token');
@@ -72,6 +114,7 @@ export const AuthProvider = ({ children }) => {
     error,
     login,
     register,
+    updateProfile,
     logout,
     isClient,
     isOps,

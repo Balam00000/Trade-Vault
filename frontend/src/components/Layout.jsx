@@ -103,17 +103,20 @@ const Layout = ({ children }) => {
         </div>
 
         {/* User Card inside Sidebar */}
-        <div className="p-4 border-b dark:border-slate-900 border-slate-200 bg-slate-50/50 dark:bg-slate-900/50">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-brand-500/10 flex items-center justify-center border border-brand-500/30">
+        <Link 
+          to="/profile"
+          className="p-4 border-b dark:border-slate-900 border-slate-200 bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="h-10 w-10 rounded-xl bg-brand-500/10 flex items-center justify-center border border-brand-500/30 group-hover:bg-brand-500/20 transition-colors">
               <User2 className="h-5 w-5 text-brand-500" />
             </div>
             <div className="overflow-hidden">
-              <h4 className="font-semibold text-sm truncate">{user?.fullName}</h4>
+              <h4 className="font-semibold text-sm truncate group-hover:text-brand-500 transition-colors">{user?.fullName}</h4>
               <p className="text-xs dark:text-brand-400 text-brand-600 font-medium tracking-wide truncate">{user?.role}</p>
             </div>
           </div>
-        </div>
+        </Link>
 
         {/* Menu Items */}
         <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">

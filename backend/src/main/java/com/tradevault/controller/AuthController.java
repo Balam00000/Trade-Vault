@@ -88,4 +88,96 @@ public class AuthController {
 
         return ResponseEntity.ok(ApiResponse.success("User registered successfully"));
     }
+    // ── Profile Endpoints (accessible by ALL authenticated roles) ──────────────
+
+    /**
+     * GET /auth/me — returns the currently authenticated user's profile.
+     */
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<AuthResponse>> getCurrentUser(Authentication authentication) {
+        String username = authentication.getName();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        AuthResponse profile = new AuthResponse(
+                null,
+                user.getUsername(),
+                user.getFullName(),
+                user.getRole(),
+                user.getEmail(),
+                user.getStatus()
+        );
+        return ResponseEntity.ok(ApiResponse.success("Profile fetched", profile));
+    }
+
+    /**
+     * PUT /auth/profile — updates the authenticated user's username, email, and/or password.
+     * All fields are optional — only supply what you want to change.
+     * Password change requires the current password for verification.
+     */
+    @PutMapping("/profile")
+    public ResponseEntity<ApiResponse<AuthResponse>> updateProfile(
+            Authentication authentication,
+            @RequestBody UpdateProfileRequest req) {
+
+        String currentUsername = authentication.getName();
+        User user = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // ── Username change ────────────────────────────────────────────────
+        if (req.getNewUsername() != null && !req.getNewUsername().isBlank()) {
+            String newUname = req.getNewUsername().trim();
+            if (!newUname.equals(user.getUsername())) {
+                if (userRepository.existsByUsername(newUname)) {
+                    return ResponseEntity.badRequest()
+                            .body(ApiResponse.error("Username '" + newUname + "' is already taken."));
+                }
+                user.setUsername(newUname);
+            }
+        }
+
+        // ── Email change ───────────────────────────────────────────────────
+        if (req.getNewEmail() != null && !req.getNewEmail().isBlank()) {
+            String newEmail = req.getNewEmail().trim();
+            if (!newEmail.equals(user.getEmail())) {
+                if (userRepository.existsByEmail(newEmail)) {
+                    return ResponseEntity.badRequest()
+                            .body(ApiResponse.error("Email '" + newEmail + "' is already in use."));
+                }
+                user.setEmail(newEmail);
+            }
+        }
+
+        // ── Password change ────────────────────────────────────────────────
+        if (req.getNewPassword() != null && !req.getNewPassword().isBlank()) {
+            if (req.getCurrentPassword() == null || req.getCurrentPassword().isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Current password is required to set a new password."));
+            }
+            if (!passwordEncoder.matches(req.getCurrentPassword(), user.getPassword())) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Current password is incorrect."));
+            }
+            if (req.getNewPassword().length() < 6) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("New password must be at least 6 characters."));
+            }
+            user.setPassword(passwordEncoder.encode(req.getNewPassword()));
+        }
+
+        userRepository.save(user);
+        auditLogService.log(user.getId(), user.getUsername(), "PROFILE_UPDATE",
+                "User updated their profile credentials", null);
+
+        String jwt = tokenProvider.generateToken(user.getUsername(), user.getRole());
+        AuthResponse updated = new AuthResponse(
+                jwt,
+                user.getUsername(),
+                user.getFullName(),
+                user.getRole(),
+                user.getEmail(),
+                user.getStatus()
+        );
+        return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", updated));
+    }
 }
