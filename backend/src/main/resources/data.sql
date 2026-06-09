@@ -100,3 +100,12 @@ INSERT IGNORE INTO `audit_logs` (`id`, `user_id`, `username`, `action`, `details
 (1, 1, 'client', 'LC_CREATION_DRAFT', 'Created draft Letter of Credit LC-2026-0002 for $3,000,000.00', '192.168.1.100'),
 (2, 2, 'ops', 'LC_DRAWING_STATUS_UPDATE', 'Updated drawing DRW-LC001-A to PAID. Utilizing credit facility LETTER_OF_CREDIT_FACILITY.', '192.168.2.14'),
 (3, 5, 'compliance', 'COMPLIANCE_CASE_OPENED', 'Opened investigation compliance case for high match score on Vance Ironworks Syria.', '192.168.5.5');
+
+-- Link seed client user to Corporate Client 1
+UPDATE `users` SET `corporate_client_id` = 1 WHERE `username` = 'client';
+
+-- Guarantee that all default seeded users have password 'password' and status 'ACTIVE'
+UPDATE `users` 
+SET `password` = '$2a$10$8.UnVuG9HHgffUDAlk8GPuRGTwRKBt18aRjN.GJCp4e9.1z40.Ety', 
+    `status` = 'ACTIVE' 
+WHERE `username` IN ('client', 'ops', 'relationship', 'treasury', 'compliance', 'admin');

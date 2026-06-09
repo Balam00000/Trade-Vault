@@ -27,7 +27,11 @@ public class User {
     private String role; // CLIENT, OPERATIONS, RELATIONSHIP_MANAGER, TREASURY, COMPLIANCE, ADMIN
 
     @Column(length = 20)
-    private String status = "ACTIVE";
+    private String status = "PENDING";
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "corporate_client_id")
+    private CorporateClient corporateClient;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -71,6 +75,9 @@ public class User {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public CorporateClient getCorporateClient() { return corporateClient; }
+    public void setCorporateClient(CorporateClient corporateClient) { this.corporateClient = corporateClient; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

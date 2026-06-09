@@ -9,7 +9,8 @@ import {
 } from 'lucide-react';
 
 const BGManagement = () => {
-  const { user, isClient, isOps } = useAuth();
+  const { user, isClient, isOps, isRM, isTreasury, isAdmin, corporateClientId } = useAuth();
+  const canUpdateStatus = isOps || isRM || isTreasury || isAdmin;
   
   // Data State
   const [bgs, setBgs] = useState([]);
@@ -31,7 +32,7 @@ const BGManagement = () => {
   // 1. Create BG Form State
   const [newBg, setNewBg] = useState({
     bgType: 'PERFORMANCE_BOND',
-    creditFacilityId: 2,
+    creditFacilityId: '',
     amount: '',
     currency: 'USD',
     beneficiaryName: '',
@@ -55,7 +56,15 @@ const BGManagement = () => {
       setBgs(bgsList);
 
       const facRes = await api.get('/corporates/facilities');
-      setFacilities((facRes.data.data || []).filter(f => f.facilityType === 'GUARANTEE_FACILITY'));
+      // Filter to only show GUARANTEE_FACILITY type facilities
+      const allFacs = facRes.data.data || [];
+      const gFacs = allFacs.filter(f => f.facilityType === 'GUARANTEE_FACILITY');
+      setFacilities(gFacs);
+      if (gFacs.length > 0) {
+        setNewBg(prev => ({ ...prev, creditFacilityId: gFacs[0].id }));
+      } else {
+        setNewBg(prev => ({ ...prev, creditFacilityId: '' }));
+      }
 
       // Fetch claims for each BG via real API endpoint
       const claimsMap = {};
@@ -83,10 +92,25 @@ const BGManagement = () => {
   const handleCreateBg = async (e) => {
     e.preventDefault();
     try {
+      // Guard: client must be mapped
+      if (isClient && !corporateClientId) {
+        alert('Your account has not been mapped to a corporate client yet. Please ask your administrator to assign your corporate client in User Management.');
+        return;
+      }
+      // Guard: must have an active Guarantee facility
+      if (facilities.length === 0) {
+        alert('No active Guarantee Facility found for your account. Please contact your Relationship Manager to set up a guarantee facility.');
+        return;
+      }
       const selectedFacility = facilities.find(f => f.id === parseInt(newBg.creditFacilityId)) || facilities[0];
-      const clientId = selectedFacility?.client?.id || 1;
-      const facilityId = newBg.creditFacilityId || 2;
+      const clientId = corporateClientId || selectedFacility?.client?.id;
+      const facilityId = selectedFacility?.id;
       
+      if (!clientId || !facilityId) {
+        alert('Unable to determine corporate client or guarantee facility. Please contact your administrator.');
+        return;
+      }
+
       const res = await api.post(`/bgs?clientId=${clientId}&facilityId=${facilityId}`, newBg);
       setBgs(prev => [res.data.data, ...prev]);
       setShowCreateModal(false);
@@ -94,7 +118,7 @@ const BGManagement = () => {
       fetchBgs();
     } catch (e) {
       console.error(e);
-      alert('Error raising guarantee application');
+      alert(e.response?.data?.message || 'Error creating BG application');
     }
   };
 
@@ -157,9 +181,10 @@ const BGManagement = () => {
   };
 
   const resetCreateForm = () => {
+    const firstFac = facilities[0];
     setNewBg({
       bgType: 'PERFORMANCE_BOND',
-      creditFacilityId: 2,
+      creditFacilityId: firstFac?.id || '',
       amount: '',
       currency: 'USD',
       beneficiaryName: '',
@@ -200,7 +225,7 @@ const BGManagement = () => {
           <button onClick={fetchBgs} className="p-2.5 rounded-xl border dark:border-slate-800 border-slate-200 dark:bg-slate-950/20 bg-white hover:bg-slate-100 transition-colors">
             <RefreshCw className="h-4 w-4" />
           </button>
-          {isClient && (
+          {isClient && corporateClientId && facilities.length > 0 && (
             <button 
               onClick={() => { resetCreateForm(); setShowCreateModal(true); }}
               className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs transition-all flex items-center gap-2"
@@ -210,6 +235,34 @@ const BGManagement = () => {
           )}
         </div>
       </div>
+
+      {/* CLIENT ACCOUNT STATUS BANNERS */}
+      {isClient && !corporateClientId && (
+        <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs">
+          <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 space-y-1">
+            <p className="font-bold text-amber-500">Account Pending Corporate Client Assignment</p>
+            <p className="text-slate-500 dark:text-slate-400">
+              Your account has been admitted but has not been mapped to a corporate client company yet.
+              Please contact your <strong className="text-slate-700 dark:text-slate-200">System Administrator</strong> to assign your corporate client profile in User Management.
+              Once mapped, you will be able to view your guarantee facilities and request Bank Guarantees.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {isClient && corporateClientId && facilities.length === 0 && !loading && (
+        <div className="flex items-start gap-3 p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-xs">
+          <HelpCircle className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 space-y-1">
+            <p className="font-bold text-blue-500">No Active Guarantee Facility</p>
+            <p className="text-slate-500 dark:text-slate-400">
+              Your corporate client account is active, but no <strong className="text-slate-700 dark:text-slate-200">Guarantee Facility</strong> has been set up yet.
+              Please contact your <strong className="text-slate-700 dark:text-slate-200">Relationship Manager</strong> to create a guarantee facility for your account.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* FILTER CONTROLS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -403,8 +456,8 @@ const BGManagement = () => {
                   </div>
                 )}
 
-                {/* STEP 2 → OPS: Approve or Release a PENDING_APPROVAL BG */}
-                {isOps && selectedBg.status === 'PENDING_APPROVAL' && (
+                {/* STEP 2 → OPS/ADMIN/RM/TREASURY: Approve or Release a PENDING_APPROVAL BG */}
+                {canUpdateStatus && selectedBg.status === 'PENDING_APPROVAL' && (
                   <div className="space-y-2">
                     <div className="p-3 rounded-xl bg-brand-500/5 border border-brand-500/20 text-[10px] text-brand-500 font-semibold">
                       📋 Awaiting Operations clearance. Review covenant terms before issuing.
@@ -486,6 +539,7 @@ const BGManagement = () => {
 
               <form onSubmit={handleCreateBg} className="space-y-4 text-xs">
                 <div className="grid grid-cols-2 gap-4">
+                  {/* Guarantee Type */}
                   <div className="space-y-1">
                     <label className="font-bold text-slate-400">Guarantee Type Bond</label>
                     <select
@@ -499,20 +553,30 @@ const BGManagement = () => {
                       <option value="FINANCIAL">FINANCIAL COVENANT</option>
                     </select>
                   </div>
+
+                  {/* Active Guarantee Facility */}
                   <div className="space-y-1">
                     <label className="font-bold text-slate-400">Active Guarantee Facility</label>
-                    <select
-                      value={newBg.creditFacilityId}
-                      onChange={(e) => setNewBg(prev => ({ ...prev, creditFacilityId: parseInt(e.target.value) }))}
-                      className="w-full px-4 py-2.5 rounded-xl border dark:border-slate-800 border-slate-200 dark:bg-slate-950 bg-white text-xs focus:outline-none"
-                    >
-                      {facilities.map(fac => (
-                        <option key={fac.id} value={fac.id}>
-                          Guarantee limit: (USD {(fac.limitAmount - fac.utilizedAmount).toLocaleString()} available)
-                        </option>
-                      ))}
-                    </select>
+                    {facilities.length === 0 ? (
+                      <div className="px-3 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[11px] font-semibold">
+                        ⚠ No Guarantee Facility — contact your Relationship Manager
+                      </div>
+                    ) : (
+                      <select
+                        value={newBg.creditFacilityId}
+                        onChange={(e) => setNewBg(prev => ({ ...prev, creditFacilityId: parseInt(e.target.value) }))}
+                        className="w-full px-4 py-2.5 rounded-xl border dark:border-slate-800 border-slate-200 dark:bg-slate-950 bg-white text-xs focus:outline-none"
+                      >
+                        {facilities.map(fac => (
+                          <option key={fac.id} value={fac.id}>
+                            {fac.client?.companyName} — Guarantee (USD {(fac.limitAmount - fac.utilizedAmount).toLocaleString()} avail.)
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
+
+                  {/* Guarantee Amount */}
                   <div className="space-y-1">
                     <label className="font-bold text-slate-400">Guarantee Amount (USD)</label>
                     <input

@@ -44,10 +44,21 @@ public class AuthController {
                 )
         );
 
+        User user = userRepository.findByUsername(loginRequest.getUsername()).orElseThrow();
+        
+        if ("PENDING".equalsIgnoreCase(user.getStatus())) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Your registration is pending admin approval."));
+        }
+        if ("SUSPENDED".equalsIgnoreCase(user.getStatus())) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Your account has been suspended. Please contact the administrator."));
+        }
+
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = tokenProvider.generateToken(authentication);
-
-        User user = userRepository.findByUsername(loginRequest.getUsername()).orElseThrow();
+        
+        Long clientId = user.getCorporateClient() != null ? user.getCorporateClient().getId() : null;
         
         AuthResponse authResponse = new AuthResponse(
                 jwt,
@@ -55,7 +66,9 @@ public class AuthController {
                 user.getFullName(),
                 user.getRole(),
                 user.getEmail(),
-                user.getStatus()
+                user.getStatus(),
+                user.getId(),
+                clientId
         );
 
         auditLogService.log(user.getId(), user.getUsername(), "USER_LOGIN", 
@@ -99,13 +112,17 @@ public class AuthController {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        Long clientId = user.getCorporateClient() != null ? user.getCorporateClient().getId() : null;
+
         AuthResponse profile = new AuthResponse(
                 null,
                 user.getUsername(),
                 user.getFullName(),
                 user.getRole(),
                 user.getEmail(),
-                user.getStatus()
+                user.getStatus(),
+                user.getId(),
+                clientId
         );
         return ResponseEntity.ok(ApiResponse.success("Profile fetched", profile));
     }
@@ -170,13 +187,16 @@ public class AuthController {
                 "User updated their profile credentials", null);
 
         String jwt = tokenProvider.generateToken(user.getUsername(), user.getRole());
+        Long clientId = user.getCorporateClient() != null ? user.getCorporateClient().getId() : null;
         AuthResponse updated = new AuthResponse(
                 jwt,
                 user.getUsername(),
                 user.getFullName(),
                 user.getRole(),
                 user.getEmail(),
-                user.getStatus()
+                user.getStatus(),
+                user.getId(),
+                clientId
         );
         return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", updated));
     }

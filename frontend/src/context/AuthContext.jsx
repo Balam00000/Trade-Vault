@@ -8,15 +8,40 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Restore session
+  // Restore session + refetch live profile from server to pick up any admin mapping changes
   useEffect(() => {
-    const storedUser = localStorage.getItem('tradevault_user');
     const storedToken = localStorage.getItem('tradevault_token');
-    
-    if (storedUser && storedToken) {
+    const storedUser = localStorage.getItem('tradevault_user');
+
+    if (storedToken && storedUser) {
+      // Immediately set from cache so the UI isn't blank
       setUser(JSON.parse(storedUser));
+      setLoading(false);
+
+      // Then silently refresh profile from server to pick up any corporate client mapping
+      // the admin may have changed since last login (e.g., new user being admitted)
+      api.get('/auth/me')
+        .then(res => {
+          const fresh = res.data.data;
+          if (fresh) {
+            const merged = {
+              ...JSON.parse(storedUser),
+              fullName: fresh.fullName || JSON.parse(storedUser).fullName,
+              email: fresh.email || JSON.parse(storedUser).email,
+              role: fresh.role || JSON.parse(storedUser).role,
+              status: fresh.status || JSON.parse(storedUser).status,
+              corporateClientId: fresh.corporateClientId ?? null,
+            };
+            setUser(merged);
+            localStorage.setItem('tradevault_user', JSON.stringify(merged));
+          }
+        })
+        .catch(() => {
+          // If server unreachable, continue with cached data — no logout forced
+        });
+    } else {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   const login = async (username, password) => {
@@ -107,6 +132,7 @@ export const AuthProvider = ({ children }) => {
   const isTreasury = user?.role === 'TREASURY';
   const isCompliance = user?.role === 'COMPLIANCE';
   const isAdmin = user?.role === 'ADMIN';
+  const corporateClientId = user?.corporateClientId;
 
   const value = {
     user,
@@ -122,6 +148,7 @@ export const AuthProvider = ({ children }) => {
     isTreasury,
     isCompliance,
     isAdmin,
+    corporateClientId,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

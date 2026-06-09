@@ -1,118 +1,127 @@
-# TradeVault – Full-Stack Enterprise Banking & Trade Finance Platform
+# 🛡️ TradeVault – Full-Stack Enterprise Banking & Trade Finance Platform
 
-TradeVault is a production-style, enterprise-grade Corporate Banking & Trade Finance platform built using a modern, multi-tier architecture. It allows commercial banks, corporate clients, relationship managers, compliance departments, and treasury teams to fully manage complex trade finance pipelines.
+TradeVault is a modern, enterprise-grade Corporate Banking & Trade Finance platform built using a robust, multi-tier architecture. It enables commercial banks, corporate clients, relationship managers, compliance desks, and treasury divisions to manage and audit complex trade finance pipelines with high security, precision, and efficiency.
+
+---
+
+## 🏗️ Platform Architecture & Workflows
+
+TradeVault utilizes a modern, dual-tier tech stack combined with strict Role-Based Access Control (RBAC) and automated data-scoping.
+
+```mermaid
+graph TD
+    A[Vite React Portal] -- JWT Auth / REST APIs --> B[Spring Security Filter Chain]
+    B -- Secure Scoped Request --> C[Spring Boot REST Services]
+    C -- ORM Mapping --> D[Hibernate JPA / MySQL]
+    C -- Watchlist API Checks --> E[Compliance & Watchlist Engines]
+```
+
+### 🔒 Access Control Matrix & Roles
+TradeVault supports six distinct enterprise roles, each with strict multitenant data isolation boundaries at both API and Database layers:
+
+| Role | Scope / Multitenancy Boundary | Key Responsibilities |
+| :--- | :--- | :--- |
+| **Corporate Client** | Scoped to own `corporateClientId` | Apply for LCs/BGs, present drawings, request amendments, initiate bills. |
+| **Trade Operations** | Bank-Wide (Trade Desk) | Maker workflow: audit presented documents, verify amendments, handle discrepancies. |
+| **Relationship Manager** | Bank-Wide (Client Desk) | Checker workflow: verify collateral, approve credit lines, activate checked instruments. |
+| **Treasury Manager** | Bank-Wide (Treasury Desk) | Audit bank-wide exposure trends, monitor cash flows, inspect liquidity indices. |
+| **Compliance Officer** | Bank-Wide (Compliance Desk) | Track sanctions matches (OFAC/UN watchlists), resolve investigation cases. |
+| **System Admin** | Global Platform | Manage identity lifecycle, reactivate/suspend users, map users to client tenants. |
+
+---
+
+## ⚡ Core Trade Workflows & Maker-Checker
+
+The Letter of Credit (LC) and Bank Guarantee (BG) issuance process implements a strict enterprise-grade **Maker-Checker** pattern to verify financial limits and compliance:
+
+```mermaid
+stateDiagram-v2
+    [*] --> DRAFT : Corporate Client Creates Draft
+    DRAFT --> IN_REVIEW : Client Submits for Review
+    IN_REVIEW --> APPROVED : Operations Officer Approves (Maker Check)
+    IN_REVIEW --> REJECTED : Operations Desk Rejects Case
+    APPROVED --> ACTIVE : Relationship Manager Clears Credit Limit (Checker Verification)
+    ACTIVE --> AMENDED : Client Requests Order Size Amendment
+    ACTIVE --> DRAWN : Beneficiary Presents Clean Documentary Drawings
+    ACTIVE --> EXPIRED : Expiry Date passes limit
+```
 
 ---
 
 ## 🚀 Key Modules & Features
 
-1. **Identity & Access Management (RBAC)**: Secure Spring Security JWT-based authentication supporting six distinct enterprise roles:
-   * **Corporate Client**: Applies for LCs/BGs, presents drawings, registers exports.
-   * **Trade Operations Officer**: Audits documentation presentations, resolves discrepant draw requests.
-   * **Relationship Manager**: Reviews credit limit allocations and handles onboarding.
-   * **Treasury Manager**: Inspects bank-wide exposure trends and liquidity indices.
-   * **Compliance Officer**: Resolves sanctions screenings watchlist matches (e.g., OFAC list alerts).
-   * **Trade Finance Admin**: Audits system logs chronological ledger, checks server/connection nodes.
-2. **Letters of Credit (LC) Core**: Support for sight/usance LCs with automated lifecycle trackers, amendment history, discrepant drawing checkers, and facility limit bounds.
-3. **Bank Guarantees (BG) Core**: Bond request workflows (Bid Bond, Performance, etc.) with covenant checks, expiry warnings, and partial default breach claim registries.
-4. **Export Bills & Collections Registry**: Dual documentary collection workspace supporting sight/usance instructions with remittance courier dispatch flows.
-5. **Compliance watchlist Screening (SDN)**: Instant transaction matching with match metrics (OFAC, UN lists) and case investigator clearing boards.
-6. **Executive Analytics Dashboard**: Custom role-based analytics grids and charts showing limits utilization and exposure trajectories using **Recharts** and **Framer Motion**.
-7. ** Chronological Audit Ledger**: Complete trace record auditing transaction commits, authentication logs, and compliance edits.
-8. **Axios Dual-Mode Resiliency**: Fully integrated REST APIs that automatically trigger **High-Fidelity Mock Fallback Mode** if the backend database or Spring Boot server is offline, enabling complete standalone client demonstrations without crashing.
+1. **Identity & Access Governance**:
+   * Automatic **`PENDING`** state for new registrations. Administrators must explicitly admit accounts and map them to their respective corporate client organization.
+   * Toggle suspension (`ACTIVE` / `SUSPENDED`) instantly terminating login privileges.
+2. **Letters of Credit (LC) Core**:
+   * Sight & Usance LC wizard forms.
+   * Structured history of amendments (previous amount vs. requested amount, justifications).
+   * Presentation of Drawings panel with **Automated Discrepancy Screening** (cross-checking Port of Loading and Invoice Limits).
+3. **Bank Guarantees (BG) Core**:
+   * Bid Bonds, Performance Bonds, and payment guarantees with custom covenants.
+   * Partial default breach claim submissions and payment status tracking.
+4. **Export Bills & Collections**:
+   * Register and dispatch export bills and collection instructions (Sight D/P vs. Usance D/A).
+5. **Sanctions screening watchdog**:
+   * Real-time automated watchlist matching (OFAC SDN, EU Lists, UN Watchlists).
+   * Flagged alerts generate compliance cases for officer investigation.
+6. **Executive Analytics Dashboard**:
+   * Responsive graphs (exposure trends, instrument distribution charts) using **Recharts**.
+   * One-click CSV and print document exporter.
 
 ---
 
 ## 🛠️ Technology Stack
 
-* **Frontend**: React.js, Vite, Tailwind CSS, Framer Motion, Recharts, Axios, React Router DOM, React Hook Form, Lucide React icons.
-* **Backend**: Java Spring Boot, Spring Security, Spring Data JPA, Hibernate, MySQL, OpenAPI/Swagger doc.
+* **Frontend**: React.js 18 (Vite), Tailwind CSS, Framer Motion, Recharts, Axios, React Router 7, React Hook Form, Lucide Icons.
+* **Backend**: Java 17, Spring Boot 3.3, Spring Security, Spring Data JPA, Hibernate, MySQL, Swagger/OpenAPI.
 * **Database**: MySQL 8.0+.
 
 ---
 
-## 📁 Repository Structure & separation of Concerns
+## ⚙️ Quick Installation & Start Guide
 
-```
-TRADE-VAULT/
-│
-├── schema.sql                        # Complete MySQL schema & mock database seeds
-│
-├── backend/                          # Spring Boot Service Layer
-│   ├── pom.xml                       # Maven dependencies & starter plugins
-│   └── src/main/java/com/tradevault/
-│       ├── TradeVaultApplication.java # Spring Boot Application Main
-│       ├── config/                   # JWT provider, security chains, OpenApi swagger
-│       ├── controller/               # REST API endpoints (Auth, LC, BG, Compliance, etc)
-│       ├── service/                  # Business logics, analytics aggregation, screenings
-│       ├── repository/               # JpaRepositories (Users, LCs, BGs, cases)
-│       ├── dto/                      # Data Transfer Objects (AuthResponse, LoginRequest)
-│       ├── entity/                   # Hibernate database models mapping relational keys
-│       └── exception/                # Global exception handling mapping errors
-│
-└── frontend/                         # Vite React Client Portal
-    ├── tailwind.config.js            # Tailwind brand & glassmorphism theme keys
-    ├── src/
-    │   ├── main.jsx                  # React Virtual DOM mounting
-    │   ├── App.jsx                   # Central routing & Protected RBAC routes
-    │   ├── index.css                 # Custom scrollbars, glowing animations, glass styling
-    │   ├── components/
-    │   │   ├── Layout.jsx            # Premium executive sidebar layout & alerts drawers
-    │   │   └── ProtectedRoute.jsx    # Client router RBAC checker
-    │   ├── context/
-    │   │   └── AuthContext.jsx       # Global login, register state provider
-    │   ├── services/
-    │   │   └── api.js                # Axios REST interceptors & Mock Resilient Fallbacks
-    │   └── pages/                    # Core modules pages
-    │       ├── Login.jsx             # Credentials gate with sandbox autofill drawers
-    │       ├── Register.jsx          # Client onboarding form
-    │       ├── ForgotPassword.jsx    # Credentials recovery
-    │       ├── Dashboard.jsx         # Executive adaptive analytics
-    │       ├── LCManagement.jsx      # Letters of Credit multi-step workspaces
-    │       ├── BGManagement.jsx      # Bank Guarantees covenants & claims
-    │       ├── BillsCollections.jsx  # Collections tracking grids
-    │       ├── ComplianceCases.jsx   # Match cases investigator panel
-    │       ├── Reports.jsx           # Recharts visualizer & CSV/PDF exporter
-    │       └── AuditLedger.jsx       # Event trails feed console
-```
-
----
-
-## ⚙️ Quick Installation & Running Guide
+Follow these steps to boot the entire platform locally.
 
 ### 1. Database Setup
-* Ensure MySQL is running on port `3306`.
-* Create the database and import seed records by importing the [schema.sql](file:///d:/TRADE-VAULT/schema.sql) file:
-  ```bash
-  mysql -u root -p < schema.sql
-  ```
+Ensure MySQL is running on port `3306` and execute the schema initialization:
+```bash
+# Connect to your MySQL server and run
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS tradevault;"
+```
+*Note: On boot, Hibernate `ddl-auto=update` creates the database tables automatically, and the custom Spring Boot seeder class populates the default database states and client mappings.*
 
-### 2. Run the Spring Boot Backend
-* Navigate to `backend/` and configure database username/password inside `src/main/resources/application.properties` if needed.
-* Run compilation and compile Spring Boot:
-  ```bash
-  mvn clean spring-boot:run
-  ```
-* Once running, interactive **Swagger / OpenAPI Documentation** is available at: [http://localhost:8080/api/swagger-ui.html](http://localhost:8080/api/swagger-ui.html)
+### 2. Launch Backend Application
+```bash
+cd backend
+# Compile and start the Spring Boot application
+mvn clean spring-boot:run
+```
+Once initialized, the server starts on [http://localhost:8080/api](http://localhost:8080/api).
+* **Swagger/OpenAPI UI**: [http://localhost:8080/api/swagger-ui/index.html](http://localhost:8080/api/swagger-ui/index.html)
 
-### 3. Run the Vite Client Portal
-* Navigate to `frontend/` and install node packages:
-  ```bash
-  npm install
-  ```
-* Launch the local development node:
-  ```bash
-  npm run dev
-  ```
-* Open the browser and visit: [http://localhost:5173/](http://localhost:5173/)
+### 3. Launch Frontend Client Portal
+```bash
+cd frontend
+# Install dependencies
+npm install
+
+# Run Vite local dev server
+npm run dev
+```
+Once compiled, open your browser and navigate to [http://localhost:5173/](http://localhost:5173/).
 
 ---
 
-## ⚡ Quick Testing Credentials (Autofill-enabled)
-For seamless platform review, click the **Autofill Sandbox buttons** on the Login screen to log in immediately as:
-* **Corporate Client**: `client` / `password`
-* **Trade Operations**: `ops` / `password`
-* **Relationship Manager**: `relationship` / `password`
-* **Treasury Manager**: `treasury` / `password`
-* **Compliance Officer**: `compliance` / `password`
-* **System Admin**: `admin` / `password`
+## 🔑 Sandbox Credentials (Password: `password`)
+
+You can use the **Autofill Drawer buttons** on the Login screen to log in immediately under any of the following profiles:
+
+| Role | Username | Test Scope |
+| :--- | :--- | :--- |
+| **System Admin** | `admin` | Identity & Access Governance, User control |
+| **Corporate Client** | `client` | Letter of Credit & BG workspaces (Tenant: Acme Industrial) |
+| **Trade Operations** | `ops` | Maker queue: approve LCs, process amendments & drawings |
+| **Relationship Manager** | `relationship` | Checker queue: verify facilities limits, activate LCs |
+| **Compliance Officer** | `compliance` | Screening dashboard, clear sanctions flags |
+| **Treasury Director** | `treasury` | General visualizer, exposure logs, bank liquidity stats |

@@ -15,14 +15,21 @@ const Reports = () => {
   const { user } = useAuth();
   
   // Data State
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState({
+    totalLimit: 0,
+    totalUtilized: 0,
+    utilizationRate: 0
+  });
   const [loading, setLoading] = useState(true);
 
   const fetchStats = async () => {
     try {
       setLoading(true);
       const res = await api.get('/analytics/summary');
-      setStats(res.data.data);
+      setStats(prev => ({
+        ...prev,
+        ...(res.data.data || {})
+      }));
     } catch (e) {
       console.error(e);
     } finally {

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 const BillsCollections = () => {
-  const { user, isClient, isOps, isAdmin } = useAuth();
+  const { user, isClient, isOps, isAdmin, corporateClientId } = useAuth();
   const canUpdateStatus = isOps || isAdmin;
   
   // Data State
@@ -59,6 +59,14 @@ const BillsCollections = () => {
 
       const colRes = await api.get('/bills/collections');
       setCollections(colRes.data.data || []);
+
+      if (corporateClientId) {
+        const clientRes = await api.get('/corporates/clients');
+        const clientList = clientRes.data.data || [];
+        if (clientList.length > 0) {
+          setNewBill(prev => ({ ...prev, drawerName: clientList[0].companyName }));
+        }
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -161,9 +169,12 @@ const BillsCollections = () => {
 
   const handleCreateBill = async (e) => {
     e.preventDefault();
+    if (!corporateClientId) {
+      alert('Your account is not associated with any corporate client company. Please contact your administrator.');
+      return;
+    }
     try {
-      const clientId = 1; // Acme Industrial Holdings is corporate client 1
-      const res = await api.post(`/bills?clientId=${clientId}`, newBill);
+      const res = await api.post(`/bills?clientId=${corporateClientId}`, newBill);
       setBills(prev => [res.data.data, ...prev]);
       alert(`Export Bill registered successfully under transaction id ${res.data.data.billNumber}.`);
       setShowCreateBillModal(false);
@@ -177,9 +188,12 @@ const BillsCollections = () => {
 
   const handleCreateCol = async (e) => {
     e.preventDefault();
+    if (!corporateClientId) {
+      alert('Your account is not associated with any corporate client company. Please contact your administrator.');
+      return;
+    }
     try {
-      const clientId = 1; // Acme Industrial Holdings is corporate client 1
-      const res = await api.post(`/bills/collections?clientId=${clientId}`, newCol);
+      const res = await api.post(`/bills/collections?clientId=${corporateClientId}`, newCol);
       setCollections(prev => [res.data.data, ...prev]);
       alert(`Documentary Collection Instruction ${res.data.data.instructionRef} recorded successfully.`);
       setShowCreateColModal(false);
@@ -192,15 +206,14 @@ const BillsCollections = () => {
   };
 
   const resetBillForm = () => {
-    setNewBill({
+    setNewBill(prev => ({
+      ...prev,
       billNumber: 'EXP-BILL-' + Math.floor(Math.random() * 9000 + 1000),
       amount: '',
-      currency: 'USD',
-      drawerName: 'Acme Industrial Holdings',
       draweeName: '',
       maturityDate: '',
       collectionBank: ''
-    });
+    }));
   };
 
   const resetColForm = () => {
@@ -247,7 +260,7 @@ const BillsCollections = () => {
           <button onClick={fetchData} className="p-2.5 rounded-xl border dark:border-slate-800 border-slate-200 dark:bg-slate-950/20 bg-white hover:bg-slate-100 transition-colors">
             <RefreshCw className="h-4 w-4" />
           </button>
-          {isClient && (
+          {isClient && corporateClientId && (
             <>
               <button 
                 onClick={() => { resetBillForm(); setShowCreateBillModal(true); }}
@@ -265,6 +278,21 @@ const BillsCollections = () => {
           )}
         </div>
       </div>
+
+      {/* CLIENT ACCOUNT STATUS BANNER */}
+      {isClient && !corporateClientId && (
+        <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs">
+          <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 space-y-1">
+            <p className="font-bold text-amber-500">Account Pending Corporate Client Assignment</p>
+            <p className="text-slate-500 dark:text-slate-400">
+              Your account has been admitted but has not been mapped to a corporate client company yet.
+              Please contact your <strong className="text-slate-700 dark:text-slate-200">System Administrator</strong> to assign your corporate client profile in User Management.
+              Once mapped, you will be able to register Export Bills and issue Documentary Collections.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* SECURE TAB CONTROLS */}
       <div className="flex border-b dark:border-slate-900 border-slate-200 max-w-sm">

@@ -16,6 +16,8 @@ import ComplianceCases from './pages/ComplianceCases';
 import Reports from './pages/Reports';
 import AuditLedger from './pages/AuditLedger';
 import Profile from './pages/Profile';
+import UserManagement from './pages/UserManagement';
+import CorporateManagement from './pages/CorporateManagement';
 
 function App() {
   return (
@@ -108,8 +110,26 @@ function App() {
               </ProtectedRoute>
             } 
           />
-
-          {/* Fallback Catch-all Route */}
+          <Route 
+            path="/user-management" 
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <Layout>
+                  <UserManagement />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/corporates" 
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <Layout>
+                  <CorporateManagement />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

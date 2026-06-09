@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, FileText, ShieldAlert, Award, FileSpreadsheet, 
-  BarChart3, History, Bell, LogOut, Sun, Moon, ShieldCheck, User2, Menu, X 
+  BarChart3, History, Bell, LogOut, Sun, Moon, ShieldCheck, User2, Menu, X, UserCheck, Building2
 } from 'lucide-react';
 import api from '../services/api';
 
@@ -38,7 +38,7 @@ const Layout = ({ children }) => {
     if (user) {
       const fetchAlerts = async () => {
         try {
-          const res = await api.get(`/notifications/user/${user.username === 'client' ? 1 : 5}`);
+          const res = await api.get(`/notifications/user/${user.id}`);
           setNotifications(res.data.data || []);
           setUnreadCount(res.data.data?.filter(n => !n.isRead).length || 0);
         } catch (e) {
@@ -72,6 +72,8 @@ const Layout = ({ children }) => {
     { name: 'Compliance Registry', icon: ShieldAlert, path: '/compliance', roles: ['COMPLIANCE', 'ADMIN'] },
     { name: 'Reports & Analytics', icon: BarChart3, path: '/reports', roles: ['CLIENT', 'TREASURY', 'OPERATIONS', 'ADMIN'] },
     { name: 'Audit Ledger', icon: History, path: '/audit-logs', roles: ['ADMIN'] },
+    { name: 'Corporate Clients', icon: Building2, path: '/corporates', roles: ['ADMIN'] },
+    { name: 'User Control', icon: UserCheck, path: '/user-management', roles: ['ADMIN'] },
   ];
 
   const filteredMenuItems = menuItems.filter(item => item.roles.includes(user?.role));

@@ -7,6 +7,8 @@ public class AuthResponse {
     private String role;
     private String email;
     private String status;
+    private Long id;
+    private Long corporateClientId;
 
     public AuthResponse() {}
 
@@ -17,6 +19,17 @@ public class AuthResponse {
         this.role = role;
         this.email = email;
         this.status = status;
+    }
+
+    public AuthResponse(String token, String username, String fullName, String role, String email, String status, Long id, Long corporateClientId) {
+        this.token = token;
+        this.username = username;
+        this.fullName = fullName;
+        this.role = role;
+        this.email = email;
+        this.status = status;
+        this.id = id;
+        this.corporateClientId = corporateClientId;
     }
 
     public String getToken() { return token; }
@@ -36,4 +49,10 @@ public class AuthResponse {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public Long getCorporateClientId() { return corporateClientId; }
+    public void setCorporateClientId(Long corporateClientId) { this.corporateClientId = corporateClientId; }
 }

@@ -15,7 +15,20 @@ import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState({
+    totalExposure: 0,
+    lcExposure: 0,
+    bgExposure: 0,
+    billExposure: 0,
+    totalLimit: 0,
+    totalUtilized: 0,
+    utilizationRate: 0,
+    activeLcsCount: 0,
+    activeBgsCount: 0,
+    activeBillsCount: 0,
+    totalScreenings: 0,
+    openComplianceCases: 0
+  });
   const [recentLcs, setRecentLcs] = useState([]);
   const [recentBgs, setRecentBgs] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
@@ -34,7 +47,10 @@ const Dashboard = () => {
         setLoading(true);
         // Fetch global stats
         const statsRes = await api.get('/analytics/summary');
-        setStats(statsRes.data.data);
+        setStats(prev => ({
+          ...prev,
+          ...(statsRes.data.data || {})
+        }));
 
         // Fetch other contextual summaries
         const lcsRes = await api.get('/lcs');
@@ -135,6 +151,23 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* CLIENT ONBOARDING BANNER — shown only for admitted but unmapped clients */}
+      {user?.role === 'CLIENT' && !user?.corporateClientId && (
+        <div className="flex items-start gap-4 p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+          <div className="h-10 w-10 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+            <ShieldAlert className="h-5 w-5 text-amber-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-amber-500">Pending Corporate Client Mapping</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+              Your account has been admitted and activated, but has not yet been linked to a Corporate Client entity.
+              Please ask your <strong className="text-slate-700 dark:text-slate-200">System Administrator</strong> to open <em>User Management</em> and assign your account to a corporate client.
+              Once linked, all workspace features — Letters of Credit, Bank Guarantees, and Export Bills — will be unlocked.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ----------------------------------------------------
           1. STATS METRICS (4 WIDGETS)
